@@ -49,6 +49,9 @@ import { fontSizePlugin } from "./fontSize";
 import { highlightColorPlugin } from "./highlightColor";
 import textColorPlugin from "./textColor";
 import { tablePlugin } from "./default";
+import { previewPlugin } from "./preview";
+import { cardPlugin } from "./card";
+import { imagePlugin } from "./image";
 
 /** Todos los plugins por defecto, en orden de barra recomendado. */
 export const corePlugins = [
@@ -62,5 +65,8 @@ export const corePlugins = [
   fontSizePlugin,
   highlightColorPlugin,
   textColorPlugin,
-  tablePlugin
+  tablePlugin,
+  previewPlugin,
+  cardPlugin,
+  imagePlugin,
 ];

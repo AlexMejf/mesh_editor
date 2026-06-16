@@ -29,12 +29,13 @@ function anchorFromSelection(root) {
   return null;
 }
 
-/* ---- el control (dropdown con formulario texto + url) -------------------- */
+/* ---- el control (dropdown con formulario texto + url + target) ----------- */
 
 function LinkControl({ editor }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [url, setUrl] = useState("");
+  const [openInNewTab, setOpenInNewTab] = useState(false); // <-- Nuevo estado para _blank
   const [editing, setEditing] = useState(false); // editando un <a> existente?
   const boxRef = useRef(null);
   const textRef = useRef(null);
@@ -64,6 +65,7 @@ function LinkControl({ editor }) {
       root.__msLinkRange = r;
       setText(existing.textContent);
       setUrl(existing.getAttribute("href") || "");
+      setOpenInNewTab(existing.getAttribute("target") === "_blank"); // <-- Lee si ya es _blank
       setEditing(true);
     } else {
       // Nuevo: guardamos el range y precargamos el texto seleccionado.
@@ -73,6 +75,7 @@ function LinkControl({ editor }) {
       root.__msLinkRange = inside ? range.cloneRange() : null;
       setText(range ? range.toString() : "");
       setUrl("");
+      setOpenInNewTab(false); // <-- Reset por defecto para nuevos enlaces
       setEditing(false);
     }
     setOpen(true);
@@ -98,9 +101,13 @@ function LinkControl({ editor }) {
     if (!href) return; // sin URL no hacemos nada
     restoreRange();
     const label = text && text.trim() ? text : href;
+    
+    // Si openInNewTab es true, añadimos target y rel de seguridad
+    const targetAttr = openInNewTab ? ' target="_blank" rel="noopener noreferrer"' : '';
+    
     editor.exec(
       "insertHTML",
-      `<a href="${escapeHtml(href)}">${escapeHtml(label)}</a>`
+      `<a href="${escapeHtml(href)}"${targetAttr}>${escapeHtml(label)}</a>`
     );
     setOpen(false);
   }
@@ -113,13 +120,13 @@ function LinkControl({ editor }) {
 
   return (
     <div ref={boxRef} className="relative inline-block">
-      {/* Boton de la barra: mismo estilo que los demas ToolButton */}
+      {/* Boton de la barra */}
       <button
         type="button"
         title="Insertar enlace"
         aria-label="Insertar enlace"
         aria-expanded={open}
-        onMouseDown={(ev) => ev.preventDefault()} /* no perder la seleccion */
+        onMouseDown={(ev) => ev.preventDefault()}
         onClick={handleButton}
         className={
           "cursor-pointer inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors" +
@@ -159,6 +166,17 @@ function LinkControl({ editor }) {
             }}
             className="mb-3 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-700 outline-none transition-colors focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20"
           />
+
+          {/* NUEVO: Checkbox para abrir en nueva pestaña */}
+          <label className="mb-4 flex cursor-pointer items-center gap-2 text-xs font-medium text-slate-600 select-none">
+            <input
+              type="checkbox"
+              checked={openInNewTab}
+              onChange={(ev) => setOpenInNewTab(ev.target.checked)}
+              className="h-3.5 w-3.5 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+            />
+            Abrir en una nueva pestaña
+          </label>
 
           <div className="flex items-center justify-between">
             {editing ? (

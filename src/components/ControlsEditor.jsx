@@ -19,7 +19,7 @@ export function ControlsEditor({ tools, exclude, children, className = "" }) {
   if (children) {
     return (
       <div className={"mesh-toolbar " + className}>
-        <div className="flex flex-wrap items-center gap-1 border-b border-slate-200 bg-slate-50/80 px-2 py-1.5">
+        <div className="flex flex-wrap items-center gap-1 rounded-t-2xl border-b border-slate-200 bg-slate-50/80 px-2 py-1.5">
           {children}
         </div>
       </div>
@@ -53,12 +53,12 @@ export function ControlsEditor({ tools, exclude, children, className = "" }) {
 
   return (
     <div className={"mesh-toolbar " + className}>
-      <div className="flex flex-wrap items-center gap-0.5 border-b border-slate-200 bg-slate-50/80 px-2 py-1.5">
+      <div className="flex flex-wrap items-center gap-0.5 rounded-t-2xl border-b border-slate-200 bg-slate-50/80 px-2 py-1.5">
         {groups.map((g, gi) => (
           <React.Fragment key={g.group + gi}>
             {gi > 0 && <Separator />}
             {g.items.map((p) => (
-              <ToolButton key={p.name} plugin={p} editor={editor}  />
+              <ToolButton key={p.name} plugin={p} editor={editor} />
             ))}
           </React.Fragment>
         ))}

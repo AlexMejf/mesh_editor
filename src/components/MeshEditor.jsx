@@ -15,6 +15,10 @@ import { SurfaceStyles } from "./SurfaceStyles";
  *   onChange     (html) => void
  *   placeholder  texto fantasma
  *   className    clases extra para el contenedor
+ *
+ * Expone en el contexto `view` ('edit' | 'preview') y `setView`.
+ * IMPORTANTE: en preview el editable NO se desmonta, solo se oculta. Asi
+ * `editor.getElement()` nunca es null y los plugins que leen el DOM no truenan.
  */
 export function MeshEditor({
   plugins = corePlugins,
@@ -25,6 +29,9 @@ export function MeshEditor({
   className = "",
 }) {
   const elRef = useRef(null);
+  const htmlRef = useRef(value); // ultimo HTML, para alimentar el preview
+
+  const [view, setView] = useState("edit"); // "edit" | "preview"
 
   // selTick fuerza re-render de la barra cuando cambia la seleccion, SIN
   // tocar el innerHTML del editable (eso resetearia el cursor).
@@ -35,6 +42,7 @@ export function MeshEditor({
   const notifyChange = useCallback(() => {
     const el = elRef.current;
     if (!el) return;
+    htmlRef.current = el.innerHTML;
     setIsEmpty(el.textContent.trim() === "");
     onChange?.(el.innerHTML);
   }, [onChange]);
@@ -43,6 +51,14 @@ export function MeshEditor({
     () => createEditorAPI(() => elRef.current, notifyChange, bumpSelection),
     [notifyChange, bumpSelection]
   );
+
+  // Al entrar a preview, captura el HTML actual para mostrarlo.
+  const changeView = useCallback((v) => {
+    if (v === "preview" && elRef.current) {
+      htmlRef.current = elRef.current.innerHTML;
+    }
+    setView(v);
+  }, []);
 
   // Mapa nombre -> plugin, para que ControlsEditor resuelva por nombre.
   const pluginMap = useMemo(() => {
@@ -85,13 +101,15 @@ export function MeshEditor({
     [plugins, editor, bumpSelection]
   );
 
-  const ctx = { editor, plugins, pluginMap };
+  const isPreview = view === "preview";
+  const ctx = { editor, plugins, pluginMap, view, setView: changeView };
 
   return (
     <MeshContext.Provider value={ctx}>
-      <div className={"rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden " + className}>
+      <div className={"rounded-2xl border border-slate-200 bg-white shadow-sm " + className}>
         {children}
         <div className="relative">
+          {/* Editable SIEMPRE montado; solo se oculta en preview. */}
           <div
             ref={elRef}
             contentEditable
@@ -101,12 +119,27 @@ export function MeshEditor({
             onMouseUp={bumpSelection}
             onKeyDown={onKeyDown}
             spellCheck
-            className="mesh-surface min-h-[280px] px-6 py-5 outline-none text-slate-800 leading-relaxed"
+            className={
+              "mesh-surface min-h-[280px] px-6 py-5 outline-none text-slate-800 leading-relaxed " +
+              (isPreview ? "hidden" : "")
+            }
           />
-          {isEmpty && (
+
+          {/* Placeholder solo en edicion y cuando esta vacio. */}
+          {!isPreview && isEmpty && (
             <div className="pointer-events-none absolute left-6 top-5 text-slate-400 select-none">
               {placeholder}
             </div>
+          )}
+
+          {/* Vista previa: HTML renderizado, no editable, sin chrome. */}
+          {isPreview && (
+            <div
+              className="mesh-surface min-h-[280px] px-6 py-5 text-slate-800 leading-relaxed"
+              dangerouslySetInnerHTML={{
+                __html: htmlRef.current || "<p style='color:#94a3b8'>(documento vacío)</p>",
+              }}
+            />
           )}
         </div>
       </div>
