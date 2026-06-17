@@ -14,8 +14,7 @@ export default function App() {
     <div className="min-h-screen bg-slate-100 px-4 py-10">
       <div className="mx-auto max-w-4xl">
         {/* Modo completo */}
-        <MeshEditor  onChange={setHtml}
-                    placeholder="Empieza a escribir...">
+        <MeshEditor  onChange={setHtml}>
           <ControlsEditor />
         </MeshEditor>
 

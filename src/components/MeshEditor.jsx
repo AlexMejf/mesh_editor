@@ -24,7 +24,7 @@ export function MeshEditor({
   plugins = corePlugins,
   value = "",
   onChange,
-  placeholder = "Escribe algo...",
+  placeholder = "",
   children,
   className = "",
 }) {
@@ -97,7 +97,9 @@ export function MeshEditor({
           return;
         }
       }
+      
     },
+
     [plugins, editor, bumpSelection]
   );
 

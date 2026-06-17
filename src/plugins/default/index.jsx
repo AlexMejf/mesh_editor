@@ -18,11 +18,6 @@ export { h1Plugin } from "./h1";
 export { h2Plugin } from "./h2";
 export { quotePlugin } from "./quote";
 export { codePlugin } from "./code";
-export { ulPlugin } from "./ul";
-export { olPlugin } from "./ol";
-export { alignLeftPlugin } from "./alignLeft";
-export { alignCenterPlugin } from "./alignCenter";
-export { alignRightPlugin } from "./alignRight";
 export { linkPlugin } from "./link";
 export { clearPlugin } from "./clear";
 export { pdfPlugin } from "./pdf";
@@ -37,11 +32,6 @@ import { h1Plugin } from "./h1";
 import { h2Plugin } from "./h2";
 import { quotePlugin } from "./quote";
 import { codePlugin } from "./code";
-import { ulPlugin } from "./ul";
-import { olPlugin } from "./ol";
-import { alignLeftPlugin } from "./alignLeft";
-import { alignCenterPlugin } from "./alignCenter";
-import { alignRightPlugin } from "./alignRight";
 import { linkPlugin } from "./link";
 import { clearPlugin } from "./clear";
 import { pdfPlugin } from "./pdf";
@@ -52,14 +42,16 @@ import { tablePlugin } from "./default";
 import { previewPlugin } from "./preview";
 import { cardPlugin } from "./card";
 import { imagePlugin } from "./image";
+import { alignPlugin } from "./alignPlugin";
+import { listPlugin } from "./listPlugin";
+import { layoutsPlugin } from "./layouts";
 
 /** Todos los plugins por defecto, en orden de barra recomendado. */
 export const corePlugins = [
   undoPlugin, redoPlugin,
+  alignPlugin, listPlugin,
   boldPlugin, italicPlugin, underlinePlugin, strikePlugin,
   h1Plugin, h2Plugin, quotePlugin, codePlugin,
-  ulPlugin, olPlugin,
-  alignLeftPlugin, alignCenterPlugin, alignRightPlugin,
   linkPlugin, clearPlugin,
   pdfPlugin,
   fontSizePlugin,
@@ -69,4 +61,5 @@ export const corePlugins = [
   previewPlugin,
   cardPlugin,
   imagePlugin,
+  layoutsPlugin,
 ];
