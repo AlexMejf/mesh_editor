@@ -13,7 +13,7 @@ const buildCode = (language) => {
   const id = `code-${Math.random().toString(36).substr(2, 9)}`;
 
   return (`
-    <div id="${id}" class="code-block-wrapper rounded-lg overflow-hidden border border-[#333] bg-[#1e1e1e] my-4" contenteditable="false">
+    <div id="${id}" data-mesh-atomic="true" class="code-block-wrapper rounded-lg overflow-hidden border border-[#333] bg-[#1e1e1e] my-4" contenteditable="false">
       
       <div class="code-header flex justify-between bg-[#2d2d2d] px-3 py-1.5 text-gray-300 text-xs font-sans select-none">
         <span>${language.label}</span>

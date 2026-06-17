@@ -24,23 +24,19 @@ const VARIANTS = [
 ];
 
 function buildCard(v) {
-  // Añadimos 'display:inline-block; vertical-align:top;' para que no fuercen saltos de línea
   const card =
-    `display:inline-block;vertical-align:top;width:100%;` + // O ajusta el ancho si quieres que sean columnas
     `border:1px solid ${v.card};border-radius:12px;overflow:hidden;margin:14px 0;` +
     `background:#fff;box-shadow:0 1px 2px rgba(15,23,42,.04)`;
-  
   const header =
     `padding:12px 16px;background:${v.headerBg};border-bottom:1px solid ${v.headerBorder};` +
     `font-weight:600;color:${v.headerColor}`;
-    
   const body = `padding:14px 16px;color:#475569`;
-
+ 
   return (
-    `<div class="mesh-card" style="${card}">` +
+    `<div class="mesh-card" data-mesh-atomic="true" style="${card}">` +
       `<div class="mesh-card-header" style="${header}">Título de la tarjeta</div>` +
       `<div class="mesh-card-body" style="${body}">Contenido de la tarjeta…</div>` +
-    `</div>`
+    `</div><p><br></p>`
   );
 }
 

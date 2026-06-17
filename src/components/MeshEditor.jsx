@@ -6,6 +6,27 @@ import { createEditorAPI } from "../core/createEditorAPI";
 import { corePlugins } from "../plugins/default";
 import { SurfaceStyles } from "./SurfaceStyles";
 
+// Bloques "atomicos" que atrapan el cursor si quedan al final del documento.
+// Se detectan por tag HTML o por el atributo de convencion data-mesh-atomic.
+const ATOMIC_TAGS = ["TABLE", "FIGURE", "IMG", "HR"];
+function isAtomic(node) {
+  return (
+    node.nodeType === 1 &&
+    (ATOMIC_TAGS.includes(node.tagName) || node.hasAttribute("data-mesh-atomic"))
+  );
+}
+// Garantiza un parrafo de escape al final: si lo ultimo es un bloque atomico,
+// añade un <p> vacio para que el usuario nunca quede atrapado.
+function ensureTrailingParagraph(el) {
+  if (!el || el.children.length === 0) return;
+  const last = el.lastElementChild;
+  if (last && isAtomic(last)) {
+    const p = document.createElement("p");
+    p.appendChild(document.createElement("br"));
+    el.appendChild(p);
+  }
+}
+
 /**
  * <MeshEditor> — provider + superficie editable.
  *
@@ -24,7 +45,7 @@ export function MeshEditor({
   plugins = corePlugins,
   value = "",
   onChange,
-  placeholder = "",
+  placeholder = "Escribe algo...",
   children,
   className = "",
 }) {
@@ -42,6 +63,7 @@ export function MeshEditor({
   const notifyChange = useCallback(() => {
     const el = elRef.current;
     if (!el) return;
+    ensureTrailingParagraph(el); // siempre deja un parrafo de escape al final
     htmlRef.current = el.innerHTML;
     setIsEmpty(el.textContent.trim() === "");
     onChange?.(el.innerHTML);
@@ -69,7 +91,10 @@ export function MeshEditor({
 
   // Contenido inicial (una sola vez, no controlado).
   useEffect(() => {
-    if (elRef.current && value) elRef.current.innerHTML = value;
+    if (elRef.current && value) {
+      elRef.current.innerHTML = value;
+      ensureTrailingParagraph(elRef.current);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -97,9 +122,7 @@ export function MeshEditor({
           return;
         }
       }
-      
     },
-
     [plugins, editor, bumpSelection]
   );
 
