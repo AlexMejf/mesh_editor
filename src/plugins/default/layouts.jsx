@@ -1,7 +1,6 @@
 // src/plugins/community/layout.js
 import { useState, useRef, useEffect, useCallback } from "react";
-import { createPortal } from "react-dom";
-import { Columns3, Trash2, GripVertical, ArrowUp, ArrowDown, LayoutTemplate } from "lucide-react";
+import { Trash2, GripVertical, ArrowUp, ArrowDown, LayoutTemplate } from "lucide-react";
 import { definePlugin } from "../../core/definePlugin";
 
 // Presets de layout: cada uno define las fracciones de las columnas.
@@ -20,7 +19,7 @@ function buildLayoutHTML(cols) {
   const cells = cols
     .map(
       () =>
-        `<div data-mesh-col="true" style="min-width:0;padding:10px;border:1px dashed #9a9da1;border-radius:8px"><p><br></p></div>`
+        `<div data-mesh-col="true" style="min-width:0;padding:10px"><p><br></p></div>`
     )
     .join("");
   return (
@@ -148,17 +147,16 @@ function LayoutOverlay({ editor }) {
     [root]
   );
 
-  // Reposiciona el overlay relativo al root. Relee getBoundingClientRect fresco.
+  // Reposiciona el overlay relativo al viewport (fixed).
   const reposition = useCallback(() => {
     if (!target || !root || !root.contains(target)) {
       setRect(null);
       return;
     }
     const tr = target.getBoundingClientRect();
-    const rr = root.getBoundingClientRect();
     setRect({
-      top: tr.top - rr.top,
-      left: tr.left - rr.left,
+      top: tr.top,
+      left: tr.left,
       width: tr.width,
       height: tr.height,
     });
@@ -190,14 +188,12 @@ function LayoutOverlay({ editor }) {
     };
   }, [root, findLayout]);
 
-  // Recalcular posición cuando cambia target/root, scroll o resize
   // Recalcular posición cuando cambia target/root, scroll, resize o tamaño del bloque
   useEffect(() => {
     reposition();
     if (!target || !root) return;
     window.addEventListener("scroll", reposition, true);
     window.addEventListener("resize", reposition);
-    // Observa cambios de alto/ancho del propio bloque al escribir dentro
     const ro = new ResizeObserver(reposition);
     ro.observe(target);
     return () => {
@@ -206,18 +202,6 @@ function LayoutOverlay({ editor }) {
       ro.disconnect();
     };
   }, [target, root, reposition]);
-
-  // El overlay debe vivir dentro del root editable para que sus coordenadas
-  // absolutas (relativas al root) caigan bien. Garantizamos que el root sea
-  // posicionado para que actúe de offsetParent.
-  useEffect(() => {
-    if (!root) return;
-    const prev = root.style.position;
-    if (getComputedStyle(root).position === "static") root.style.position = "relative";
-    return () => {
-      root.style.position = prev;
-    };
-  }, [root]);
 
   function notify() {
     if (root) root.dispatchEvent(new Event("input", { bubbles: true }));
@@ -243,12 +227,10 @@ function LayoutOverlay({ editor }) {
 
   if (!root || !target || !rect) return null;
 
-  // Portal: montamos DENTRO del root editable, no en el árbol de la barra.
-  // Así el offsetParent es el propio editor y top/left (relativos al root) caen bien.
-  return createPortal(
+  return (
     <div
       ref={overlayRef}
-      className="pointer-events-none absolute z-40"
+      className="pointer-events-none fixed z-40"
       style={{ top: rect.top, left: rect.left, width: rect.width, height: rect.height }}
       contentEditable={false}
     >
@@ -288,8 +270,7 @@ function LayoutOverlay({ editor }) {
           <Trash2 size={14} />
         </button>
       </div>
-    </div>,
-    root
+    </div>
   );
 }
 
@@ -309,4 +290,3 @@ export const layoutPlugin = definePlugin({
   icon: LayoutTemplate,
   render: (e) => <LayoutRoot editor={e} />,
 });
-// Registrar: exportar desde src/plugins/community/index.js y pasar en plugins={[...corePlugins, layoutPlugin]}.

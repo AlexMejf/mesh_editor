@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import {
   Table as TableIcon, Move,
   ArrowUp, ArrowDown, ArrowLeft, ArrowRight,
-  PaintBucket, Trash2, X, Rows3, Columns3,
+  PaintBucket, Trash2, X, Rows3, Columns3, Pipette,
 } from "lucide-react";
 import { definePlugin } from "../../core/definePlugin";
 
@@ -19,6 +19,9 @@ const TABLE_STYLE = "width:100%;border-collapse:collapse;margin:14px 0;font-size
 const TH_STYLE = "border:1px solid #e2e8f0;background:#f8fafc;padding:9px 12px;text-align:left;font-weight:600;color:#334155;word-wrap:break-word";
 const TD_STYLE = "border:1px solid #e2e8f0;padding:9px 12px;color:#475569;vertical-align:top;word-wrap:break-word";
 const CELL_COLORS = ["transparent", "#fee2e2", "#fef3c7", "#dcfce7", "#dbeafe", "#f3e8ff", "#f1f5f9"];
+
+// Clave para localStorage
+const RECENT_COLORS_KEY = "mesh-table-recent-colors";
 
 /* ---- helpers ------------------------------------------------------------- */
 function ancestorTag(root, tag) {
@@ -153,7 +156,25 @@ function TableControl({ editor }) {
 function TableOverlay({ editor }) {
   const [table, setTable] = useState(null);
   const [selected, setSelected] = useState(false);
-  const [pop, setPop] = useState(null); // "color" | "delete" | null
+  const [pop, _setPop] = useState(null); // "color" | "delete" | null
+  const [recentColors, setRecentColors] = useState([]);
+  const popRef = useRef(null);
+
+  // Cargar colores recientes al montar
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(RECENT_COLORS_KEY);
+      if (saved) setRecentColors(JSON.parse(saved));
+    } catch (e) { /* ignore */ }
+  }, []);
+
+  // setPop inteligente que maneja funciones y actualiza la referencia de escudo
+  function setPop(v) {
+    const newVal = typeof v === "function" ? v(popRef.current) : v;
+    popRef.current = newVal;
+    _setPop(newVal);
+  }
+
   const [, setTick] = useState(0);
   const bump = useCallback(() => setTick((n) => n + 1), []);
   const tableRef = useRef(null);
@@ -165,13 +186,22 @@ function TableOverlay({ editor }) {
   // Detectar tabla y celda bajo el cursor.
   useEffect(() => {
     function update(e) {
-      if (e && e.target && e.target.closest && e.target.closest("[data-mesh-tableui]")) return;
+      // 1. ESCUDO TERMICO: Si el panel de color está abierto, no cerramos nada.
+      // Esto protege contra pérdidas de foco del selector nativo.
+      if (popRef.current === "color") return;
+
+      const isUI = e && e.target && e.target.closest && e.target.closest("[data-mesh-tableui]");
+      if (isUI) return;
+
       const root = editor.getElement();
       const tbl = root ? ancestorTag(root, "TABLE") : null;
       cellRef.current = root ? cellFromSelection(root) : null;
-      setTable(tbl);
-      setSelected(false);
-      setPop(null);
+      
+      if (tbl !== tableRef.current) {
+        setTable(tbl);
+        setSelected(false);
+        setPop(null);
+      }
     }
     document.addEventListener("selectionchange", update);
     document.addEventListener("click", update, true);
@@ -215,14 +245,16 @@ function TableOverlay({ editor }) {
     const rows = tableRef.current ? tableRef.current.querySelectorAll("tr") : null;
     return rows && rows.length ? rows[rows.length - 1].children[0] : null;
   }
-  function after(fn) {
+
+  function after(fn, keepOpen = false) {
     const cell = targetCell();
     if (!cell) return;
     fn(cell, cell.closest("table"));
     notify(editor.getElement());
-    setPop(null);
+    if (!keepOpen) setPop(null);
     bump();
   }
+
   function insertRow(below) {
     after((cell) => {
       const tr = cell.parentNode;
@@ -263,8 +295,17 @@ function TableOverlay({ editor }) {
   function deleteTable() {
     after((cell, table) => { table.remove(); setTable(null); });
   }
-  function fillCell(color) {
-    after((cell) => { cell.style.background = color === "transparent" ? "" : color; });
+  function fillCell(color, keepOpen = false) {
+    after((cell) => {
+      cell.style.background = color === "transparent" ? "" : color;
+      
+      // Guardar en recientes si es un color real y no está ya el primero
+      if (color !== "transparent" && recentColors[0] !== color) {
+        const next = [color, ...recentColors.filter((c) => c !== color)].slice(0, 7);
+        setRecentColors(next);
+        localStorage.setItem(RECENT_COLORS_KEY, JSON.stringify(next));
+      }
+    }, keepOpen);
   }
 
   // Redimensionar columna.
@@ -304,7 +345,7 @@ function TableOverlay({ editor }) {
         borderRadius: 8, boxSizing: "border-box", pointerEvents: "none", zIndex: 38,
       }} />
 
-      {/* Manijas de columna (ocultas cuando esta seleccionada para borrar) */}
+      {/* Manijas de columna */}
       {!selected && cols.map((c, i) => (
         <div key={i} data-mesh-tableui onMouseDown={(e) => startColResize(e, c.th)}
           style={{ position: "fixed", left: c.x - 3, top: rect.top, width: 6, height: rect.height,
@@ -314,7 +355,7 @@ function TableOverlay({ editor }) {
         </div>
       ))}
 
-      {/* Mini-barra flotante de edicion (SOBRE la tabla) */}
+      {/* Mini-barra flotante de edicion */}
       <div data-mesh-tableui
         style={{ position: "fixed", left: rect.left, top: barTop, zIndex: 42 }}
         className="flex items-center gap-0.5 rounded-xl border border-slate-200 bg-white p-1 shadow-lg">
@@ -333,17 +374,51 @@ function TableOverlay({ editor }) {
           onClick={() => setPop((p) => (p === "delete" ? null : "delete"))} />
       </div>
 
-      {/* Popover de color */}
+      {/* Popover de color (ESTILO textColor + Recientes) */}
       {pop === "color" && (
         <div data-mesh-tableui
           style={{ position: "fixed", left: rect.left, top: barTop + 44, zIndex: 43 }}
-          className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
-          {CELL_COLORS.map((c) => (
-            <button key={c} type="button" title={c === "transparent" ? "Sin relleno" : c}
-              onMouseDown={(e) => e.preventDefault()} onClick={() => fillCell(c)}
-              className="h-6 w-6 rounded-md border border-slate-200 transition-transform hover:scale-110"
-              style={{ background: c === "transparent" ? "#fff" : c }} />
-          ))}
+          className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-2.5 shadow-lg min-w-[160px]">
+          
+          <div data-mesh-tableui className="grid grid-cols-7 gap-1">
+            {CELL_COLORS.map((c) => (
+              <button key={c} type="button" title={c === "transparent" ? "Sin relleno" : c}
+                onMouseDown={(e) => e.preventDefault()} onClick={() => fillCell(c)}
+                className="h-6 w-6 rounded-md border border-slate-200 transition-transform hover:scale-110"
+                style={{ background: c === "transparent" ? "#fff" : c }} />
+            ))}
+          </div>
+
+          {recentColors.length > 0 && (
+            <>
+              <div data-mesh-tableui className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Reciente + Variantes</div>
+              <div data-mesh-tableui className="flex flex-wrap gap-1">
+                {recentColors.map((c) => (
+                  <button key={c} type="button" title={c}
+                    onMouseDown={(e) => e.preventDefault()} onClick={() => fillCell(c)}
+                    className="h-5 w-5 rounded border border-slate-200 transition-transform hover:scale-110"
+                    style={{ background: c }} />
+                ))}
+              </div>
+            </>
+          )}
+
+          <div data-mesh-tableui className="h-px bg-slate-100 my-0.5" />
+          
+          <label
+            data-mesh-tableui
+            onMouseDown={(e) => e.preventDefault()}
+            className="flex cursor-pointer items-center gap-2 rounded-lg px-1 py-1 transition-colors hover:bg-slate-50"
+          >
+            <input
+              data-mesh-tableui
+              type="color"
+              className="h-6 w-6 cursor-pointer border-none bg-transparent"
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => fillCell(e.target.value, true)}
+            />
+            <span data-mesh-tableui className="text-xs font-medium text-slate-500">Más colores</span>
+          </label>
         </div>
       )}
 

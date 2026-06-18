@@ -44,9 +44,9 @@ function buildCard(v) {
   const body = `padding:14px 16px;color:#475569;outline:none;min-height:1.4em`;
 
   return (
-    `<div class="mesh-card" data-variant="${v.id}" contenteditable="false" style="${card}">` +
+    `<div class="mesh-card" data-mesh-card="true" data-mesh-atomic="true" data-variant="${v.id}" style="${card}">` +
       `<div class="mesh-card-header" contenteditable="true" style="${header}">Título de la tarjeta</div>` +
-      `<div class="mesh-card-body" contenteditable="true" style="${body}"><p>Contenido de la tarjeta…</p></div>` +
+      `<div class="mesh-card-body" data-mesh-col="true" contenteditable="true" style="${body}"><p>Contenido de la tarjeta…</p></div>` +
     `</div><p><br></p>`
   );
 }
@@ -60,15 +60,6 @@ function CardOverlay({ editor }) {
   selRef.current = sel;
 
   const [varOpen, setVarOpen] = useState(false);
-
-  // surface: posicionado + stacking context
-  useEffect(() => {
-    const root = editor.getElement();
-    if (!root) return;
-    if (getComputedStyle(root).position === "static") root.style.position = "relative";
-    root.style.isolation = "isolate";
-    root.style.display = "flow-root";
-  });
 
   // Selección de la tarjeta
   useEffect(() => {
@@ -92,14 +83,16 @@ function CardOverlay({ editor }) {
       if (!card) return;
       const t = e.target;
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
-      if (t && t.isContentEditable && t.closest && t.closest(".mesh-card")) return;
+      // Solo borrar si el foco NO está en un elemento editable (el usuario seleccionó la card pero no está escribiendo)
+      if (t && t.isContentEditable) return;
+      
       if (e.key === "Delete" || e.key === "Backspace") {
         e.preventDefault();
+        const root = editor.getElement();
         card.remove();
         setSel(null);
         setVarOpen(false);
-        const root = editor.getElement();
-        root.dispatchEvent(new Event("input", { bubbles: true }));
+        if (root) root.dispatchEvent(new Event("input", { bubbles: true }));
       }
     }
     document.addEventListener("keydown", onKey);
@@ -123,7 +116,7 @@ function CardOverlay({ editor }) {
       document.removeEventListener("mousemove", move);
       document.removeEventListener("mouseup", up);
       const root = editor.getElement();
-      root.dispatchEvent(new Event("input", { bubbles: true }));
+      if (root) root.dispatchEvent(new Event("input", { bubbles: true }));
     }
     document.addEventListener("mousemove", move);
     document.addEventListener("mouseup", up);
@@ -178,7 +171,12 @@ function CardOverlay({ editor }) {
       >
         <ActionBtn icon={Palette} label="Cambiar color" active={varOpen} onClick={() => setVarOpen(!varOpen)} />
         <span className="mx-0.5 h-5 w-px bg-slate-200" />
-        <ActionBtn icon={Trash2} label="Eliminar" danger onClick={() => { sel.remove(); setSel(null); }} />
+        <ActionBtn icon={Trash2} label="Eliminar" danger onClick={() => { 
+          const root = editor.getElement();
+          sel.remove(); 
+          setSel(null);
+          if (root) root.dispatchEvent(new Event("input", { bubbles: true }));
+        }} />
       </div>
 
       {/* Dropdown de variantes */}
@@ -197,7 +195,7 @@ function CardOverlay({ editor }) {
                 setVarOpen(false);
                 bump();
                 const root = editor.getElement();
-                root.dispatchEvent(new Event("input", { bubbles: true }));
+                if (root) root.dispatchEvent(new Event("input", { bubbles: true }));
               }}
               className="cursor-pointer flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left text-sm text-slate-700 transition-colors hover:bg-slate-100"
             >

@@ -18,8 +18,8 @@ export function ControlsEditor({ tools, exclude, children, className = "" }) {
   // Modo (d): barra armada a mano.
   if (children) {
     return (
-      <div className={"mesh-toolbar " + className}>
-        <div className="flex flex-wrap items-center gap-1 rounded-t-2xl border-b border-slate-200 bg-slate-50/80 px-2 py-1.5">
+      <div className={"mesh-toolbar sticky top-0 z-20 " + className}>
+        <div className="flex flex-wrap items-center gap-1 rounded-t-2xl border-b border-slate-200 bg-slate-50/90 backdrop-blur-sm px-2 py-1.5">
           {children}
         </div>
       </div>
@@ -52,8 +52,8 @@ export function ControlsEditor({ tools, exclude, children, className = "" }) {
   const groups = order.map((g) => ({ group: g, items: byGroup.get(g) }));
 
   return (
-    <div className={"mesh-toolbar " + className}>
-      <div className="flex flex-wrap items-center gap-0.5 rounded-t-2xl border-b border-slate-200 bg-slate-50/80 px-2 py-1.5">
+    <div className={"mesh-toolbar sticky top-0 z-20 " + className}>
+      <div className="flex flex-wrap items-center gap-0.5 rounded-t-2xl border-b border-slate-200 bg-slate-50/90 backdrop-blur-sm px-2 py-1.5">
         {groups.map((g, gi) => (
           <React.Fragment key={g.group + gi}>
             {gi > 0 && <Separator />}

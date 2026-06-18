@@ -14,6 +14,13 @@ export function SurfaceStyles() {
       .mesh-surface ul{list-style:disc;padding-left:1.4em}
       .mesh-surface ol{list-style:decimal;padding-left:1.4em}
       .mesh-surface a{color:#6d5dfc;text-decoration:underline}
+
+      
+      /* Layout borders: solo visibles en edición */
+      .mesh-surface[contenteditable="true"] [data-mesh-col="true"]:not(.mesh-card-body) {
+        border: 1px dashed #9a9da1;
+        border-radius: 8px;
+      }
     `}</style>
   );
 }

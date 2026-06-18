@@ -17,14 +17,12 @@ const ATOMIC_SELECTOR = "table, figure, hr, [data-mesh-atomic]";
 function ensureEscapes(el) {
   if (!el) return;
   el.querySelectorAll(ATOMIC_SELECTOR).forEach((atomic) => {
-    // Solo saltar si el padre es un bloque atomico que NO es un contenedor rico
-    // (ej. una imagen dentro de un figure). Los layouts y cards SI son contenedores ricos.
+    // Si ya le pusimos escape o ya tiene contenido después, ignorar
+    if (atomic.dataset.meshEscaped) return;
+
     const parentAtomic = atomic.parentElement?.closest(ATOMIC_SELECTOR);
-    if (parentAtomic) {
-      // Si el padre es un layout, permitimos escapes dentro de sus celdas
-      if (!atomic.parentElement.closest('[data-mesh-col], .mesh-card-body')) {
-        return;
-      }
+    if (parentAtomic && atomic.tagName === "IMG" && parentAtomic.tagName === "FIGURE") {
+      return;
     }
 
     const next = atomic.nextElementSibling;
@@ -32,6 +30,8 @@ function ensureEscapes(el) {
       const p = document.createElement("p");
       p.appendChild(document.createElement("br"));
       atomic.after(p);
+      // Marcamos que este bloque ya generó su escape inicial
+      atomic.dataset.meshEscaped = "true";
     }
   });
 }
@@ -126,7 +126,16 @@ export function MeshEditor({
           const node = sel.anchorNode;
           const elx = node && (node.nodeType === 3 ? node.parentElement : node);
           const cell = elx && elx.closest && elx.closest("[data-mesh-col]");
-          if (cell && cell.textContent.trim() === "") {
+          
+          if (cell) {
+            // Si hay más de un hijo (varios <p>), permitimos borrar para limpiar espacio.
+            if (cell.children.length > 1) return;
+            
+            // Si hay texto, permitimos borrar (hasta que quede la celda vacía).
+            if (cell.textContent.trim() !== "") return;
+
+            // Si llegamos aquí, la celda está en su estado mínimo (1 hijo o menos y sin texto).
+            // Bloqueamos para que no se borre el <div> contenedor de la celda.
             e.preventDefault();
             return;
           }
@@ -192,9 +201,18 @@ export function MeshEditor({
 
   return (
     <MeshContext.Provider value={ctx}>
-      <div className={"rounded-2xl border border-slate-200 bg-white shadow-sm " + className}>
+      <div
+        className={
+          "flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm " +
+          className
+        }
+        style={{ height: className.includes("h-") ? "100%" : "auto" }}
+      >
         {children}
-        <div className="relative">
+        <div 
+          className="mesh-board relative flex-1 overflow-y-auto"
+          style={{ maxHeight: className.includes("h-") ? "none" : "70vh" }}
+        >
           {/* Editable SIEMPRE montado; solo se oculta en preview. */}
           <div
             ref={elRef}

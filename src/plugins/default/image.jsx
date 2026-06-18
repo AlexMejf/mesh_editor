@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
-  Image as ImageIcon, Type, PanelLeft, PanelRight,
+  Image as ImageIcon, Type, PanelLeft, PanelRight, AlignCenter,
   BringToFront, SendToBack, Trash2, Captions, ChevronLeft, Check,
   LaptopMinimal,
 } from "lucide-react";
@@ -89,6 +89,8 @@ function applyMode(img, mode, root) {
     t.verticalAlign = "middle";
   } else if (mode === "left") {
     t.float = "left"; t.margin = "4px 16px 8px 0";
+  } else if (mode === "center") {
+    t.display = "block"; t.margin = "12px auto";
   } else if (mode === "right") {
     t.float = "right"; t.margin = "4px 0 8px 16px";
   } else if (mode === "front" || mode === "behind") {
@@ -358,6 +360,7 @@ function ImageOverlay({ editor }) {
       >
         <ModeBtn icon={Type} label="En línea" active={mode === "inline"} onClick={() => setMode("inline")} />
         <ModeBtn icon={PanelLeft} label="Izquierda" active={mode === "left"} onClick={() => setMode("left")} />
+        <ModeBtn icon={AlignCenter} label="Centrar" active={mode === "center"} onClick={() => setMode("center")} />
         <ModeBtn icon={PanelRight} label="Derecha" active={mode === "right"} onClick={() => setMode("right")} />
         <span className="mx-0.5 h-5 w-px bg-slate-200" />
         <ModeBtn icon={BringToFront} label="Delante del texto" active={mode === "front"} onClick={() => setMode("front")} />
