@@ -1,12 +1,5 @@
 /**
  * Plugins por defecto de MeshEditor.
- *
- * Cada funcionalidad vive en su propio archivo (un archivo = un plugin).
- * Aqui solo los reunimos. Puedes importar `corePlugins` para tener todo, o
- * importar plugins sueltos para armar tu propia lista:
- *
- *   import { boldPlugin, italicPlugin, pdfPlugin } from "mesh-editor/plugins/default";
- *   <MeshEditor plugins={[boldPlugin, italicPlugin, pdfPlugin]} />
  */
 export { undoPlugin } from "./undo";
 export { redoPlugin } from "./redo";
@@ -21,6 +14,7 @@ export { codePlugin } from "./code";
 export { linkPlugin } from "./link";
 export { clearPlugin } from "./clear";
 export { pdfPlugin } from "./pdf";
+export { exportPlugin } from "./export";
 
 import { undoPlugin } from "./undo";
 import { redoPlugin } from "./redo";
@@ -44,7 +38,8 @@ import { cardPlugin } from "./card";
 import { imagePlugin } from "./image";
 import { alignPlugin } from "./alignPlugin";
 import { listPlugin } from "./listPlugin";
-import { layoutsPlugin } from "./layouts";
+import { layoutPlugin } from "./layouts";
+import { exportPlugin } from "./export";
 
 /** Todos los plugins por defecto, en orden de barra recomendado. */
 export const corePlugins = [
@@ -54,12 +49,13 @@ export const corePlugins = [
   h1Plugin, h2Plugin, quotePlugin, codePlugin,
   linkPlugin, clearPlugin,
   pdfPlugin,
+  exportPlugin,
   fontSizePlugin,
   highlightColorPlugin,
   textColorPlugin,
   tablePlugin,
+  layoutPlugin,
   previewPlugin,
   cardPlugin,
   imagePlugin,
-  layoutsPlugin,
 ];

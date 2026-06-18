@@ -6,25 +6,34 @@ import { createEditorAPI } from "../core/createEditorAPI";
 import { corePlugins } from "../plugins/default";
 import { SurfaceStyles } from "./SurfaceStyles";
 
-// Bloques "atomicos" que atrapan el cursor si quedan al final del documento.
-// Se detectan por tag HTML o por el atributo de convencion data-mesh-atomic.
-const ATOMIC_TAGS = ["TABLE", "FIGURE", "IMG", "HR"];
-function isAtomic(node) {
-  return (
-    node.nodeType === 1 &&
-    (ATOMIC_TAGS.includes(node.tagName) || node.hasAttribute("data-mesh-atomic"))
-  );
-}
-// Garantiza un parrafo de escape al final: si lo ultimo es un bloque atomico,
-// añade un <p> vacio para que el usuario nunca quede atrapado.
-function ensureTrailingParagraph(el) {
-  if (!el || el.children.length === 0) return;
-  const last = el.lastElementChild;
-  if (last && isAtomic(last)) {
-    const p = document.createElement("p");
-    p.appendChild(document.createElement("br"));
-    el.appendChild(p);
-  }
+// Selector de bloques "atomicos" que atrapan el cursor: tags que lo hacen de
+// por si + el atributo de convencion data-mesh-atomic.
+const ATOMIC_SELECTOR = "table, figure, hr, [data-mesh-atomic]";
+
+// Garantiza un <p> de escape DESPUES de cada bloque atomico que no tenga ya un
+// hermano editable (cubre el final del documento y el hueco entre dos atomicos
+// pegados). El escape de INICIO no se crea aqui: seria una linea vacia
+// permanente. Se crea bajo demanda con la flecha arriba (ver onKeyDown).
+function ensureEscapes(el) {
+  if (!el) return;
+  el.querySelectorAll(ATOMIC_SELECTOR).forEach((atomic) => {
+    // Solo saltar si el padre es un bloque atomico que NO es un contenedor rico
+    // (ej. una imagen dentro de un figure). Los layouts y cards SI son contenedores ricos.
+    const parentAtomic = atomic.parentElement?.closest(ATOMIC_SELECTOR);
+    if (parentAtomic) {
+      // Si el padre es un layout, permitimos escapes dentro de sus celdas
+      if (!atomic.parentElement.closest('[data-mesh-col], .mesh-card-body')) {
+        return;
+      }
+    }
+
+    const next = atomic.nextElementSibling;
+    if (!next || next.matches(ATOMIC_SELECTOR)) {
+      const p = document.createElement("p");
+      p.appendChild(document.createElement("br"));
+      atomic.after(p);
+    }
+  });
 }
 
 /**
@@ -63,7 +72,7 @@ export function MeshEditor({
   const notifyChange = useCallback(() => {
     const el = elRef.current;
     if (!el) return;
-    ensureTrailingParagraph(el); // siempre deja un parrafo de escape al final
+    ensureEscapes(el); // siempre deja un parrafo de escape tras los bloques atomicos
     htmlRef.current = el.innerHTML;
     setIsEmpty(el.textContent.trim() === "");
     onChange?.(el.innerHTML);
@@ -89,11 +98,13 @@ export function MeshEditor({
     return m;
   }, [plugins]);
 
-  // Contenido inicial (una sola vez, no controlado).
+  // Contenido inicial (una sola vez, no controlado) + separador de parrafo.
   useEffect(() => {
+    // Que los saltos de linea sean <p> en vez de <div> (mas limpio y predecible).
+    try { document.execCommand("defaultParagraphSeparator", false, "p"); } catch (_) {}
     if (elRef.current && value) {
       elRef.current.innerHTML = value;
-      ensureTrailingParagraph(elRef.current);
+      ensureEscapes(elRef.current);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -107,6 +118,56 @@ export function MeshEditor({
   // Atajos de teclado declarados por los plugins.
   const onKeyDown = useCallback(
     (e) => {
+      // Guard de estructura: no dejar que Backspace/Delete en una celda VACIA
+      // de un bloque atomico (ej. columna de layout) colapse la estructura.
+      if (e.key === "Backspace" || e.key === "Delete") {
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount && sel.isCollapsed) {
+          const node = sel.anchorNode;
+          const elx = node && (node.nodeType === 3 ? node.parentElement : node);
+          const cell = elx && elx.closest && elx.closest("[data-mesh-col]");
+          if (cell && cell.textContent.trim() === "") {
+            e.preventDefault();
+            return;
+          }
+        }
+      }
+
+      // Escape de INICIO bajo demanda: si el primer bloque del documento es
+      // atomico y el cursor esta en su primera linea, ArrowUp crea un parrafo
+      // arriba (en vez de tener una linea vacia permanente).
+      if (e.key === "ArrowUp") {
+        const el = elRef.current;
+        const sel = window.getSelection();
+        if (el && sel && sel.rangeCount && sel.isCollapsed) {
+          let block = sel.anchorNode;
+          block = block && (block.nodeType === 3 ? block.parentElement : block);
+          while (block && block.parentElement && block.parentElement !== el) {
+            block = block.parentElement;
+          }
+          const isFirstAtomic =
+            block && block.parentElement === el &&
+            !block.previousElementSibling &&
+            block.matches(ATOMIC_SELECTOR);
+          if (isFirstAtomic) {
+            // solo si el cursor esta cerca del borde superior del bloque
+            const cr = sel.getRangeAt(0).getBoundingClientRect();
+            const br = block.getBoundingClientRect();
+            if (!cr.height || cr.top - br.top < 28) {
+              e.preventDefault();
+              const p = document.createElement("p");
+              p.appendChild(document.createElement("br"));
+              block.before(p);
+              const r = document.createRange();
+              r.setStart(p, 0); r.collapse(true);
+              sel.removeAllRanges(); sel.addRange(r);
+              notifyChange();
+              return;
+            }
+          }
+        }
+      }
+
       const mod = e.metaKey || e.ctrlKey;
       for (const p of plugins) {
         if (!p.shortcut) continue;
@@ -123,7 +184,7 @@ export function MeshEditor({
         }
       }
     },
-    [plugins, editor, bumpSelection]
+    [plugins, editor, bumpSelection, notifyChange]
   );
 
   const isPreview = view === "preview";
